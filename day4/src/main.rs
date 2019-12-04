@@ -60,16 +60,25 @@ impl Digits {
     }
 
     pub fn to_next_password_no_triples(&mut self) {
-        self.to_next_password();
+        self.increment_to_next_ascending();
 
-        if self
-            .0
-            .windows(3)
-            .find(|window| window[0] == window[1] && window[1] == window[2])
-            .is_some()
-        {
-            self.to_next_password_no_triples();
+        // Try to find a doubled digit, that has no further neighbours with the same
+        // value
+        for i in 0..NUM_DIGITS - 1 {
+            if self.0[i] == self.0[i + 1] {
+                if i != 0 && self.0[i - 1] == self.0[i] {
+                    continue;
+                }
+                if i + 1 < NUM_DIGITS - 1 && self.0[i + 2] == self.0[i] {
+                    continue;
+                }
+
+                return;
+            }
         }
+
+        // No such pair could be found
+        self.to_next_password_no_triples();
     }
 }
 
