@@ -1,6 +1,6 @@
+use std::collections::HashMap;
 use std::fs;
 
-const GRID_SIZE: usize = 50000;
 const PORT_X: usize = 25000;
 const PORT_Y: usize = 25000;
 
@@ -42,24 +42,25 @@ impl Movement {
 // Content of the grid at a specific position
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct GridContent {
-    pub red:   bool,
-    pub green: bool
+    pub red:   usize,
+    pub green: usize
 }
 
 impl Default for GridContent {
     fn default() -> Self {
         Self {
-            red:   false,
-            green: false
+            red:   usize::max_value(),
+            green: usize::max_value()
         }
     }
 }
 
 fn perform_movement(
+    steps: &mut usize,
     x: &mut usize,
     y: &mut usize,
     mut movement: Movement,
-    grid: &mut Vec<Vec<GridContent>>,
+    grid: &mut HashMap<(usize, usize), GridContent>,
     colour_red: bool
 ) {
     println!("Performing movement: {:?}", movement);
@@ -71,10 +72,39 @@ fn perform_movement(
             Down => *y += 1,
             Right => *x += 1
         }
+        *steps += 1;
         movement.amount -= 1;
 
-        grid[*y][*x].red |= colour_red;
-        grid[*y][*x].green |= !colour_red;
+        match grid.get_mut(&(*x, *y)) {
+            Some(entry) => {
+                if colour_red {
+                    entry.red = usize::min(entry.red, *steps)
+                }
+                else {
+                    entry.green = usize::min(entry.green, *steps)
+                }
+            }
+            None => {
+                if colour_red {
+                    grid.insert(
+                        (*x, *y),
+                        GridContent {
+                            red:   *steps,
+                            green: usize::max_value()
+                        }
+                    );
+                }
+                else {
+                    grid.insert(
+                        (*x, *y),
+                        GridContent {
+                            green: *steps,
+                            red:   usize::max_value()
+                        }
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -112,34 +142,41 @@ fn main() {
         .collect();
 
     // Initialise the grid
-    let mut grid = vec![vec![GridContent::default(); GRID_SIZE]; GRID_SIZE];
+    let mut grid = HashMap::new();
     let mut x = PORT_X;
     let mut y = PORT_Y;
 
     // Perform the red movements
+    let mut steps = 0;
     for movement in red_movements {
-        perform_movement(&mut x, &mut y, movement, &mut grid, true);
+        perform_movement(&mut steps, &mut x, &mut y, movement, &mut grid, true);
     }
 
     x = PORT_X;
     y = PORT_Y;
 
     // Perform the green movements
+    steps = 0;
     for movement in green_movements {
-        perform_movement(&mut x, &mut y, movement, &mut grid, false);
+        perform_movement(&mut steps, &mut x, &mut y, movement, &mut grid, false);
     }
 
     println!("Intersections: ");
-    for y in 0..GRID_SIZE {
-        for x in 0..GRID_SIZE {
-            if grid[y][x].red && grid[y][x].green {
-                println!(
-                    "{} manhattan units from the port is [{}, {}]",
-                    manhattan_distance((x, y), (PORT_X, PORT_Y)),
-                    x,
-                    y
-                );
-            }
+    for ((x, y), v) in grid {
+        if v.red != usize::max_value() && v.green != usize::max_value() {
+            println!(
+                "{} manhattan units from the port is [{}, {}]",
+                manhattan_distance((x, y), (PORT_X, PORT_Y)),
+                x,
+                y
+            );
+
+            println!(
+                "{} steps for red, {} for green; {} total",
+                v.red,
+                v.green,
+                v.red + v.green
+            );
         }
     }
 }
