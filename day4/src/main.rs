@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-const NUM_DIGITS: usize = 6;
+const NUM_DIGITS: usize = 7;
 
 const MIN_VAL: u32 = 402328;
 const MAX_VAL: u32 = 864247;
@@ -20,7 +20,7 @@ fn into_digits(mut val: u32) -> Digits {
 }
 
 impl Digits {
-    pub fn to_next_password(&mut self) {
+    fn increment_to_next_ascending(&mut self) {
         // Increment to the next higher number
         let mut digit_inc = 0;
         loop {
@@ -42,6 +42,10 @@ impl Digits {
                 }
             }
         }
+    }
+
+    pub fn to_next_password(&mut self) {
+        self.increment_to_next_ascending();
 
         // There has to be at least one digit doubled, otherwise the next number should
         // be taken
@@ -53,6 +57,19 @@ impl Digits {
 
         // No double digit was found
         self.to_next_password();
+    }
+
+    pub fn to_next_password_no_triples(&mut self) {
+        self.to_next_password();
+
+        if self
+            .0
+            .windows(3)
+            .find(|window| window[0] == window[1] && window[1] == window[2])
+            .is_some()
+        {
+            self.to_next_password_no_triples();
+        }
     }
 }
 
@@ -95,5 +112,19 @@ fn main() {
         num_vals += 1;
     }
 
-    println!("Total number of matches: {}", num_vals);
+    println!("Total number of matches for the first part: {}", num_vals);
+
+    // Start value is one below the minimal value, since the minimum could already
+    // be a valid password.
+    let mut val = into_digits(MIN_VAL - 1);
+    let mut num_vals = 0;
+    while {
+        val.to_next_password_no_triples();
+        val < max
+    } {
+        println!("{:?} ", val);
+        num_vals += 1;
+    }
+
+    println!("Total number of matches for the second part: {}", num_vals);
 }
