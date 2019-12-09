@@ -26,12 +26,14 @@ impl Operation {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
     Address,
     Immediate,
 }
 
 fn split_op_code(op_code: Int) -> (Operation, Vec<Mode>) {
+    println!("Splitting op_code {}", op_code);
     let op = Operation::from_u8((op_code % 100) as u8).expect("Invalid op code");
 
     // Firstly, we will ignore the operation part of our opcode, so the least significant two
@@ -48,20 +50,37 @@ fn split_op_code(op_code: Int) -> (Operation, Vec<Mode>) {
         op_code /= 10;
     }
 
+    println!("Operation is {:?}, modes are: {:?}", op, &modes);
+
     (op, modes)
 }
 
-fn resolve_pos(pos: usize, modes: &Vec<Mode>, tape: &Vec<Int>) -> usize {
-    match modes.get(pos) {
-        Some(Mode::Address) | None => tape[pos] as usize,
-        Some(Mode::Immediate) => pos,
+fn resolve_pos(pos: usize, param: usize, modes: &Vec<Mode>, tape: &Vec<Int>) -> usize {
+    println!(
+        "Resolving {},{}: {:?} => {:?}",
+        pos,
+        param,
+        &modes,
+        modes.get(param - 1)
+    );
+
+    match modes.get(param - 1) {
+        Some(Mode::Address) | None => tape[pos + param] as usize,
+        Some(Mode::Immediate) => pos + param,
     }
 }
 
 fn add(tape: &mut Vec<Int>, pos: usize, modes: Vec<Mode>) {
+    println!("Adding with modes: {:?}", &modes);
+
     let res_pos = tape[pos + 3] as usize;
-    let p1_pos = resolve_pos(pos + 1, &modes, &tape);
-    let p2_pos = resolve_pos(pos + 2, &modes, &tape);
+    let p1_pos = resolve_pos(pos, 1, &modes, &tape);
+    let p2_pos = resolve_pos(pos, 2, &modes, &tape);
+
+    println!(
+        "p1_pos: {}, p2_pos: {}, res_pos: {}",
+        p1_pos, p2_pos, res_pos
+    );
 
     print!(
         "@{}[{}] + @{}[{}] => @{}[{:?} ->",
@@ -75,8 +94,8 @@ fn add(tape: &mut Vec<Int>, pos: usize, modes: Vec<Mode>) {
 
 fn mul(tape: &mut Vec<Int>, pos: usize, modes: Vec<Mode>) {
     let res_pos = tape[pos + 3] as usize;
-    let p1_pos = resolve_pos(pos + 1, &modes, &tape);
-    let p2_pos = resolve_pos(pos + 2, &modes, &tape);
+    let p1_pos = resolve_pos(pos, 1, &modes, &tape);
+    let p2_pos = resolve_pos(pos, 2, &modes, &tape);
 
     print!(
         "@{}[{}] * @{}[{}] => @{}[{:?} ->",
@@ -101,13 +120,13 @@ fn inp(tape: &mut Vec<Int>, pos: usize) {
         .parse::<Int>()
         .expect("Did not enter correct integer");
 
-    let input_pos = resolve_pos(pos + 1, &vec![Mode::Address], &tape);
+    let input_pos = resolve_pos(pos, 1, &vec![Mode::Address], &tape);
     tape[input_pos] = input;
     println!("Storing input at {}", input_pos);
 }
 
 fn out(tape: &Vec<Int>, pos: usize, modes: Vec<Mode>) {
-    let out_pos = resolve_pos(pos + 1, &modes, &tape);
+    let out_pos = resolve_pos(pos, 1, &modes, &tape);
 
     println!("Output: {}", tape[out_pos]);
 }
